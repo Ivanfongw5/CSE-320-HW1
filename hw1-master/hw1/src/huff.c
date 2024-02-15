@@ -1,9 +1,17 @@
+/*
+Haifeng Wu
+SBU ID: 114375272
+CSE 320
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "global.h"
 #include "huff.h"
 #include "debug.h"
+
+
 
 #ifdef _STRING_H
 #error "Do not #include <string.h>. You will get a ZERO."
@@ -42,6 +50,7 @@
  */
 void emit_huffman_tree() {
     // To be implemented.
+    
     abort();
 }
 
@@ -75,7 +84,92 @@ int read_huffman_tree() {
  */
 int compress_block() {
     // To be implemented.
-    abort();
+    //abort();
+    
+    int block_bits = (global_options & 0xffff0000) >> 16; // Mask and shift to get the upper 16 bits
+    int block_size = block_bits + 1; 
+
+    int next = 0;
+    for(int count = 0; count < block_size; count++){
+        if (ferror(stdin)){
+            return -1;
+        }
+
+        next = fgetc(stdin);    //get the next bit of input
+
+        if(next != EOF){
+            *(current_block + count) = next;
+        } else return -1;
+    }
+
+    int nodes_count = 0;
+    int node_symbol_count = 0;
+
+    for (int current_block_index = 0; current_block_index < block_size; current_block_index++){
+        short symbol = *(current_block + current_block_index);
+        int flag = 0;
+
+        for (int node_count = 0; node_count < nodes_count; node_count++){
+            NODE node = *(nodes+node_count);
+            if (node.symbol == symbol){
+                (*(nodes + node_count)).weight++;
+                flag = 1;
+            }
+        }
+
+        if (flag == 0){
+            NODE node;
+            node.left = NULL;
+            node.right = NULL;
+            node.parent = NULL;
+            node.weight = 1;
+            node.symbol = symbol;
+            *(nodes + nodes_count) = node;
+
+            nodes_count++;
+        }
+    }
+
+    NODE node;
+    node.left = NULL;
+    node.right = NULL;
+    node.parent = NULL;
+    node.symbol = 0xff00;
+    *(nodes + (nodes_count++)) = node;
+
+    num_nodes = nodes_count;
+    int endpoint = (2 * num_nodes - 1) - 1;
+    while (nodes_count > 1){
+        int mini_index = find_min(nodes_count);
+        remove_node(mini_index, &nodes_count, &node_symbol_count, &endpoint);
+        NODE *min1 = &(*(nodes+endpoint + 1));
+
+        int min2_index = find_min(nodes_count);
+        remove_node(min2_index, &nodes_count, &node_symbol_count, &endpoint);
+        NODE *min2 = &(*(nodes + endpoint + 1));
+
+        NODE newNode;
+        newNode.left = min1;
+        newNode.right = min2;
+
+        newNode.weight = (*min1).weight + (*min2).weight;
+        newNode.symbol = ' ';
+        newNode.parent = NULL;
+
+        *(nodes + nodes_count) = newNode;
+        (*min1).parent = nodes + nodes_count;
+        (*min2).parent = nodes + nodes_count;
+        nodes_count++;
+
+        num_nodes++;
+    }
+
+    assign_code(node_symbol_count);
+    emit_huffman_tree();
+    emit_encoded_message(stdout. block_size, node_symbol_count);
+
+    return 0;n
+        
 }
 
 /**
@@ -144,5 +238,75 @@ int decompress() {
 int validargs(int argc, char **argv)
 {
     // To be implemented.
-    abort();
+    //abort();
+    if (argc == 1){
+        printf("Usage: bin/huff [-h] [-c|-d] [-b BLOCKSIZE]\n");     //print the usage
+        printf("    -h       Help: displays this help menu\n");
+        printf("    -c       Compress: read raw data, output compressed data\n");
+        printf("    -d       Decompress: read compressed data, output raw data\n");
+        printf("    -b       For compression, specify blocksize in bytes (range [1024, 65536])\n");
+        return EXIT_FAILURE;          //if no flags provided, exit with an EXIT_FAILURE
+    }
+
+    char **arg = argv + 1;     //take the second argv
+    if (new_strcmp(*arg, "-h") == 0){
+        printf("Usage: bin/huff [-h] [-c|-d] [-b BLOCKSIZE]\n");    //print the usage
+        printf("    -h       Help: displays this help menu\n");
+        printf("    -c       Compress: read raw data, output compressed data\n");
+        printf("    -d       Decompress: read compressed data, output raw data\n");
+        printf("    -b       For compression, specify blocksize in bytes (range [1024, 65536])\n");
+        return EXIT_SUCCESS;
+    }
+
+    for (int i = 1; i < argc; i++){   //continue to read the argv
+        if (new_strcmp(*arg, "-c") == 0){  
+            global_options |= 2;              //if "-c" then                                
+        } else if (new_strcmp(*arg, "-d") == 0){
+            global_options |= 4;                                           
+        } else if (new_strcmp(*arg, "-b")== 0){
+            if ((global_options & 2) == 0 || (i >= (argc - 1))){
+                return EXIT_FAILURE;
+            } else {
+                i++;
+                arg++;
+                int a = new_atoi(*arg);
+                if (a < 1024 || a > 65536){
+                    return EXIT_FAILURE;
+                } 
+                a--;
+                global_options |= a << 16;
+            } 
+        } else return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
+
+/*
+This is a function I created to replace the strcmp function since we cannot use the string.h
+*/
+int new_strcmp(const char *s1, const char *s2) {
+    for (; *s1 != '\0' && *s1 == *s2; ++s1, ++s2) {
+    }
+    return (*(unsigned char*)s1 - *(unsigned char*)s2);
+}
+
+/*
+This is a function I created to replace the atoi function to convert the string to binary
+*/
+int new_atoi(const char *s1){
+    int value = 0;
+    if (*s1 == ' '){
+        s1++;                           // jump the blank
+    } else if (*s1 < '0' || *s1 > '9'){
+        return 0;                //If the first char is not a number, return 0
+    }
+    while (*s1 >= '0' && *s1 <= '9' && *s1 != '\0'){
+        value = value *10 + (*s1 - '0');
+        s1++;
+    }
+    return value;
+    
 }
