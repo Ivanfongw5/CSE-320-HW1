@@ -42,6 +42,22 @@ CSE 320
  * YOU WILL GET A ZERO!
  */
 
+
+void emit_huffman_tree_rec(NODE *node) {
+    if (!node) return;
+
+    // Check if it's a leaf node (no children)
+    if (node->left == NULL && node->right == NULL) {
+        fputc('1', stdout); // Mark the beginning of a leaf node
+        fwrite(&(node->symbol), sizeof(node->symbol), 1, stdout); // Emit the symbol
+    } else {
+        fputc('0', stdout); // Mark the beginning of an internal node
+        emit_huffman_tree_rec(node->left);
+        emit_huffman_tree_rec(node->right);
+    }
+}
+
+
 /**
  * @brief Emits a description of the Huffman tree used to compress the current block.
  * @details This function emits, to the standard output, a description of the
@@ -51,8 +67,11 @@ CSE 320
 void emit_huffman_tree() {
     // To be implemented.
     
-    abort();
+    //abort();
+    emit_huffman_tree_rec(root);
+    fflush(stdout); // Make sure all output has been written to stdout
 }
+
 
 /**
  * @brief Reads a description of a Huffman tree and reconstructs the tree from
