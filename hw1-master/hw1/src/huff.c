@@ -365,3 +365,48 @@ int new_atoi(const char *s1){
     return value;
     
 }
+
+
+void remove_node(int index, int *nodes_sum, int *node_symbol_count, int *endpoint) {
+    NODE *nodeToRemove = (nodes + index);
+    if (nodeToRemove->left) {
+        nodeToRemove->left->parent = NULL;
+    }
+    if (nodeToRemove->right) {
+        nodeToRemove->right->parent = NULL;
+    }
+    
+    if (nodeToRemove->parent) {// If the node has a parent, adjust its child pointers
+        if (nodeToRemove->parent->left == nodeToRemove) {
+            nodeToRemove->parent->left = NULL;
+        } else if (nodeToRemove->parent->right == nodeToRemove) {
+            nodeToRemove->parent->right = NULL;
+        }
+    }
+    
+   for (NODE **current = nodes + index; current < nodes + *nodes_sum - 1; current++) {
+    *current = *(current + 1);
+}
+
+    (*nodes_sum)--; // Decrease total node count
+}
+ make
+cc -Wall -Werror -Wno-unused-variable -Wno-unused-function -MMD -fcommon -std=gnu11 -I include -c -o build/huff.o src/huff.c
+src/huff.c: In function ‘emit_huffman_tree’:
+src/huff.c:75:27: error: passing argument 1 of ‘emit_huffman_tree_rec’ from incompatible pointer type [-Werror=incompatible-pointer-types]
+   75 |     emit_huffman_tree_rec(&nodes);
+      |                           ^~~~~~
+      |                           |
+      |                           NODE (*)[513] {aka struct node (*)[513]}
+src/huff.c:47:34: note: expected ‘NODE *’ {aka ‘struct node *’} but argument is of type ‘NODE (*)[513]’ {aka ‘struct node (*)[513]’}
+   47 | void emit_huffman_tree_rec(NODE *node) {
+      |                            ~~~~~~^~~~
+src/huff.c: In function ‘remove_node’:
+src/huff.c:132:26: error: initialization of ‘NODE **’ {aka ‘struct node **’} from incompatible pointer type ‘NODE *’ {aka ‘struct node *’} [-Werror=incompatible-pointer-types]
+  132 |    for (NODE **current = nodes + index; current < nodes + *nodes_sum - 1; current++) {
+      |                          ^~~~~
+src/huff.c:132:49: error: comparison of distinct pointer types lacks a cast [-Werror]
+  132 |    for (NODE **current = nodes + index; current < nodes + *nodes_sum - 1; current++) {
+      |                                                 ^
+cc1: all warnings being treated as errors
+
