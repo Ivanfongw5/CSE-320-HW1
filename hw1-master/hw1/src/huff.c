@@ -90,6 +90,28 @@ int read_huffman_tree() {
     abort();
 }
 
+void remove_node(NODE **nodes, int index, int *nodes_sum, int *node_symbol_count, int *endpoint) {
+    NODE *nodeToRemove = *(nodes + index);
+    if (nodeToRemove->left) nodeToRemove->left->parent = NULL;
+    if (nodeToRemove->right) nodeToRemove->right->parent = NULL;
+
+    if (nodeToRemove->parent) {// If the node has a parent, adjust its child pointers
+        if (nodeToRemove->parent->left == nodeToRemove) {
+            nodeToRemove->parent->left = NULL;
+        } else if (nodeToRemove->parent->right == nodeToRemove) {
+            nodeToRemove->parent->right = NULL;
+        }
+    }
+
+    
+   for (NODE **current = nodes + index; current < nodes + *nodes_sum - 1; current++) {
+    *current = *(current + 1);
+}
+
+    (*nodes_sum)--; // Decrease total node count
+}
+
+
 /**
  * @brief Reads one block of data from standard input and emits corresponding
  * compressed data to standard output.
@@ -105,10 +127,11 @@ int compress_block() {
     // To be implemented.
     //abort();
     
-    int block_bits = (global_options & 0xffff0000) >> 16; // Mask and shift to get the upper 16 bits
-    int block_size = block_bits + 1; 
-
-    int next = 0;
+    int block_bits = (global_options & 0xffff0000) >> 16; //get the upper 16 bits
+    int block_size = block_bits + 1;        
+    int nodes_sum = 0;
+    int node_symbol_count = 0;
+    int next = 0;    //initial the bit
     for(int count = 0; count < block_size; count++){
         if (ferror(stdin)){
             return -1;
@@ -116,37 +139,36 @@ int compress_block() {
 
         next = fgetc(stdin);    //get the next bit of input
 
-        if(next != EOF){
+        if(next != EOF){     //
             *(current_block + count) = next;
         } else return -1;
     }
 
-    int nodes_count = 0;
-    int node_symbol_count = 0;
-
-    for (int current_block_index = 0; current_block_index < block_size; current_block_index++){
-        short symbol = *(current_block + current_block_index);
+    int current_block_number = 0;
+    while (current_block_number < block_size){
+        short symbol = *(current_block + current_block_number);
         int flag = 0;
-
-        for (int node_count = 0; node_count < nodes_count; node_count++){
+        int node_count = 0;
+        while(node_count < nodes_sum){
             NODE node = *(nodes+node_count);
             if (node.symbol == symbol){
                 (*(nodes + node_count)).weight++;
                 flag = 1;
             }
+            node_count++;
         }
 
         if (flag == 0){
             NODE node;
+            node.weight = 1;
             node.left = NULL;
             node.right = NULL;
             node.parent = NULL;
-            node.weight = 1;
             node.symbol = symbol;
-            *(nodes + nodes_count) = node;
-
-            nodes_count++;
+            *(nodes + nodes_sum) = node;
+            nodes_sum++;
         }
+        current_block_number++;
     }
 
     NODE node;
@@ -154,17 +176,15 @@ int compress_block() {
     node.right = NULL;
     node.parent = NULL;
     node.symbol = 0xff00;
-    *(nodes + (nodes_count++)) = node;
-
-    num_nodes = nodes_count;
+    *(nodes + (nodes_sum++)) = node; num_nodes = nodes_sum;
     int endpoint = (2 * num_nodes - 1) - 1;
-    while (nodes_count > 1){
-        int mini_index = find_min(nodes_count);
-        remove_node(mini_index, &nodes_count, &node_symbol_count, &endpoint);
+    while (nodes_sum > 1){
+        int mini_index = find_min(nodes_sum);
+        remove_node(mini_index, &nodes_sum, &node_symbol_count, &endpoint);
         NODE *min1 = &(*(nodes+endpoint + 1));
 
-        int min2_index = find_min(nodes_count);
-        remove_node(min2_index, &nodes_count, &node_symbol_count, &endpoint);
+        int min2_index = find_min(nodes_sum);
+        remove_node(min2_index, &nodes_sum, &node_symbol_count, &endpoint);
         NODE *min2 = &(*(nodes + endpoint + 1));
 
         NODE newNode;
@@ -175,10 +195,10 @@ int compress_block() {
         newNode.symbol = ' ';
         newNode.parent = NULL;
 
-        *(nodes + nodes_count) = newNode;
-        (*min1).parent = nodes + nodes_count;
-        (*min2).parent = nodes + nodes_count;
-        nodes_count++;
+        *(nodes + nodes_sum) = newNode;
+        (*min1).parent = nodes + nodes_sum;
+        (*min2).parent = nodes + nodes_sum;
+        nodes_sum++;
 
         num_nodes++;
     }
@@ -187,7 +207,7 @@ int compress_block() {
     emit_huffman_tree();
     emit_encoded_message(stdout. block_size, node_symbol_count);
 
-    return 0;n
+    return 0;
         
 }
 
