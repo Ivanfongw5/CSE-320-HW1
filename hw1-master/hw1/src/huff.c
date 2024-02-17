@@ -41,14 +41,14 @@ CSE 320
  * any "float" or "double" variables.  IF YOU VIOLATE THIS RESTRICTION,
  * YOU WILL GET A ZERO!
  */
-int find_min(NODE **nodes, int nodes_sum) {
+int find_min(int nodes_sum) {
     int minIndex = -1; // Initialize to an invalid index
     int minWeight = INT_MAX; // Initialize to maximum possible value
 
-NODE **current_node = nodes;
+    NODE *current_node = nodes; // Pointer to the first node
 for (int i = 0; i < nodes_sum; i++, current_node++) {
-    if (*current_node && (*current_node)->weight < minWeight) {
-        minWeight = (*current_node)->weight;
+    if (current_node && current_node->weight < minWeight) {
+        minWeight = current_node->weight;
         minIndex = i;
     }
 }
@@ -56,6 +56,7 @@ for (int i = 0; i < nodes_sum; i++, current_node++) {
 
     return minIndex; // Return the index of the node with minimum weight
 }
+
 
 
 void emit_huffman_tree_rec(NODE *node) {
