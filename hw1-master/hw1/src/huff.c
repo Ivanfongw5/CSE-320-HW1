@@ -45,12 +45,14 @@ int find_min(NODE **nodes, int nodes_sum) {
     int minIndex = -1; // Initialize to an invalid index
     int minWeight = INT_MAX; // Initialize to maximum possible value
 
-    for (int i = 0; i < nodes_sum; i++) {
-        if (nodes[i] && nodes[i]->weight < minWeight) {
-            minWeight = nodes[i]->weight;
-            minIndex = i;
-        }
+NODE **current_node = nodes;
+for (int i = 0; i < nodes_sum; i++, current_node++) {
+    if (*current_node && (*current_node)->weight < minWeight) {
+        minWeight = (*current_node)->weight;
+        minIndex = i;
     }
+}
+
 
     return minIndex; // Return the index of the node with minimum weight
 }
