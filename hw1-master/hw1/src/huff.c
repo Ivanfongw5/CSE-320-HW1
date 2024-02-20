@@ -41,26 +41,12 @@ CSE 320
  * any "float" or "double" variables.  IF YOU VIOLATE THIS RESTRICTION,
  * YOU WILL GET A ZERO!
  */
-int find_min(int nodes_sum) {
-    int minIndex = -1; // Initialize to an invalid index
-    int minWeight = INT_MAX; // Initialize to maximum possible value
-
-    NODE *current_node = nodes; // Pointer to the first node
-for (int i = 0; i < nodes_sum; i++, current_node++) {
-    if (current_node && current_node->weight < minWeight) {
-        minWeight = current_node->weight;
-        minIndex = i;
-    }
-}
-
-
-    return minIndex; // Return the index of the node with minimum weight
-}
 
 
 
 void emit_huffman_tree_rec(NODE *node) {
-    if (!node) return;
+    if (!node) 
+        return;
 
     // Check if it's a leaf node (no children)
     if (node->left == NULL && node->right == NULL) {
@@ -74,6 +60,7 @@ void emit_huffman_tree_rec(NODE *node) {
 }
 
 
+
 /**
  * @brief Emits a description of the Huffman tree used to compress the current block.
  * @details This function emits, to the standard output, a description of the
@@ -84,7 +71,15 @@ void emit_huffman_tree() {
     // To be implemented.
     
     //abort();
-    emit_huffman_tree_rec(root);
+
+    if (nodes->left == NULL && nodes->right == NULL) {
+        fputc('1', stdout); // Mark the beginning of a leaf node
+        fwrite(&(nodes->symbol), sizeof(nodes->symbol), 1, stdout); // Emit the symbol
+    } else {
+        fputc('0', stdout); // Mark the beginning of an internal node
+        emit_huffman_tree_rec(nodes->left);
+        emit_huffman_tree_rec(nodes->right);
+    }
     fflush(stdout); // Make sure all output has been written to stdout
 }
 
@@ -106,11 +101,33 @@ int read_huffman_tree() {
     abort();
 }
 
-void remove_node(NODE **nodes, int index, int *nodes_sum, int *node_symbol_count, int *endpoint) {
-    NODE *nodeToRemove = *(nodes + index);
-    if (nodeToRemove->left) nodeToRemove->left->parent = NULL;
-    if (nodeToRemove->right) nodeToRemove->right->parent = NULL;
+void assign_code(int a){
 
+}
+
+int find_min(int nodes_sum) {
+    int minIndex = -1; // Initialize to an invalid index
+    int minWeight = 999999; // Initialize to maximum possible value
+
+    NODE *current_node = nodes; // Pointer to the first node
+    for (int i = 0; i < nodes_sum; i++, current_node++) {
+        if (current_node && current_node->weight < minWeight) {
+            minWeight = current_node->weight;
+            minIndex = i;
+        }
+    }
+    return minIndex; // Return the index of the node with minimum weight
+}
+
+void remove_node(int index, int *nodes_sum, int *node_symbol_count, int *endpoint) {
+    NODE *nodeToRemove = (nodes + index);
+    if (nodeToRemove->left) {
+        nodeToRemove->left->parent = NULL;
+    }
+    if (nodeToRemove->right) {
+        nodeToRemove->right->parent = NULL;
+    }
+    
     if (nodeToRemove->parent) {// If the node has a parent, adjust its child pointers
         if (nodeToRemove->parent->left == nodeToRemove) {
             nodeToRemove->parent->left = NULL;
@@ -118,9 +135,8 @@ void remove_node(NODE **nodes, int index, int *nodes_sum, int *node_symbol_count
             nodeToRemove->parent->right = NULL;
         }
     }
-
-    
-   for (NODE **current = nodes + index; current < nodes + *nodes_sum - 1; current++) {
+    NODE *current = nodes + index;
+   for (int i = index; i < *nodes_sum - 1; current++) {
     *current = *(current + 1);
 }
 
@@ -202,7 +218,6 @@ int compress_block() {
         int min2_index = find_min(nodes_sum);
         remove_node(min2_index, &nodes_sum, &node_symbol_count, &endpoint);
         NODE *min2 = &(*(nodes + endpoint + 1));
-
         NODE newNode;
         newNode.left = min1;
         newNode.right = min2;
@@ -215,14 +230,11 @@ int compress_block() {
         (*min1).parent = nodes + nodes_sum;
         (*min2).parent = nodes + nodes_sum;
         nodes_sum++;
-
         num_nodes++;
     }
 
     assign_code(node_symbol_count);
     emit_huffman_tree();
-    emit_encoded_message(stdout. block_size, node_symbol_count);
-
     return 0;
         
 }
@@ -256,7 +268,23 @@ int decompress_block() {
  */
 int compress() {
     // To be implemented.
-    abort();
+    //abort();
+    if ((global_options & 0x2) == 0){
+        return -1;              // check if the compression mode is choose "-c"
+    }
+
+    while (!feof(stdin) && !ferror(stdin)){
+        int result = compress_block();  // check each block
+        if (result != 0){
+            return -1;
+        }
+        emit_huffman_tree();
+    }
+    if (ferror(stdin)){
+        return -1;           //if there is an error reading the stdin, return fail
+    }
+    fflush(stdout);
+    return 0;
 }
 
 /**
@@ -290,52 +318,14 @@ int decompress() {
  * @modifies global variable "global_options" to contain a bitmap representing
  * the selected options.
  */
-int validargs(int argc, char **argv)
-{
-    // To be implemented.
-    //abort();
-    if (argc == 1){
-        printf("Usage: bin/huff [-h] [-c|-d] [-b BLOCKSIZE]\n");     //print the usage
-        printf("    -h       Help: displays this help menu\n");
-        printf("    -c       Compress: read raw data, output compressed data\n");
-        printf("    -d       Decompress: read compressed data, output raw data\n");
-        printf("    -b       For compression, specify blocksize in bytes (range [1024, 65536])\n");
-        return EXIT_FAILURE;          //if no flags provided, exit with an EXIT_FAILURE
-    }
 
-    char **arg = argv + 1;     //take the second argv
-    if (new_strcmp(*arg, "-h") == 0){
-        printf("Usage: bin/huff [-h] [-c|-d] [-b BLOCKSIZE]\n");    //print the usage
-        printf("    -h       Help: displays this help menu\n");
-        printf("    -c       Compress: read raw data, output compressed data\n");
-        printf("    -d       Decompress: read compressed data, output raw data\n");
-        printf("    -b       For compression, specify blocksize in bytes (range [1024, 65536])\n");
-        return EXIT_SUCCESS;
-    }
 
-    for (int i = 1; i < argc; i++){   //continue to read the argv
-        if (new_strcmp(*arg, "-c") == 0){  
-            global_options |= 2;              //if "-c" then                                
-        } else if (new_strcmp(*arg, "-d") == 0){
-            global_options |= 4;                                           
-        } else if (new_strcmp(*arg, "-b")== 0){
-            if ((global_options & 2) == 0 || (i >= (argc - 1))){
-                return EXIT_FAILURE;
-            } else {
-                i++;
-                arg++;
-                int a = new_atoi(*arg);
-                if (a < 1024 || a > 65536){
-                    return EXIT_FAILURE;
-                } 
-                a--;
-                global_options |= a << 16;
-            } 
-        } else return EXIT_FAILURE;
-    }
 
-    return EXIT_SUCCESS;
-}
+
+
+
+
+
 
 
 
@@ -351,7 +341,7 @@ int new_strcmp(const char *s1, const char *s2) {
 /*
 This is a function I created to replace the atoi function to convert the string to binary
 */
-int new_atoi(const char *s1){
+int string_to_int(char *s1){
     int value = 0;
     if (*s1 == ' '){
         s1++;                           // jump the blank
@@ -363,50 +353,51 @@ int new_atoi(const char *s1){
         s1++;
     }
     return value;
-    
 }
 
+int validargs(int argc, char **argv)
+{
+    // To be implemented.
+    //abort();
+    int b_flag = 0;
+    if (argc == 1){
+        return EXIT_FAILURE;          //if no flags provided, exit with an EXIT_FAILURE
+    }
 
-void remove_node(int index, int *nodes_sum, int *node_symbol_count, int *endpoint) {
-    NODE *nodeToRemove = (nodes + index);
-    if (nodeToRemove->left) {
-        nodeToRemove->left->parent = NULL;
-    }
-    if (nodeToRemove->right) {
-        nodeToRemove->right->parent = NULL;
-    }
-    
-    if (nodeToRemove->parent) {// If the node has a parent, adjust its child pointers
-        if (nodeToRemove->parent->left == nodeToRemove) {
-            nodeToRemove->parent->left = NULL;
-        } else if (nodeToRemove->parent->right == nodeToRemove) {
-            nodeToRemove->parent->right = NULL;
+    char **arg = argv + 1;     //take the second argv
+    for (; argc > 1; arg++, argc--) {
+    if (new_strcmp(*arg, "-h") == 0 && *(*arg + 2) == '\0') { 
+        if (arg != argv + 1) { // If -h is not the first argument
+            return EXIT_FAILURE;
         }
+        global_options = 1; // Set least significant bit
+        return 0;
+    } else if (new_strcmp(*arg, "-c") == 0&& *(*arg + 2) == '\0') { // Compression flag
+        global_options |= 2; // Set second bit
+    } else if (new_strcmp(*arg, "-d")==0 && *(*arg + 2) == '\0') { // Decompression flag
+        global_options |= 4; // Set third bit
+    } else if (new_strcmp(*arg, "-b")==0) { // Block size flag
+        if (argc < 3) return -1; // Ensure a number follows -b
+        if (global_options & 0x4) {
+            return -1;
+        }
+        b_flag = 1;
+        arg++; // Move to the block size argument
+        argc--;
+        int blockSize = string_to_int(*arg);
+        if (blockSize < 1024 || blockSize > 65536) return -1; // Check valid range
+        global_options |= (blockSize - 1) << 16; // Store block size in the 16 most significant bits
+    } else { 
+        return -1;
     }
+}
     
-   for (NODE **current = nodes + index; current < nodes + *nodes_sum - 1; current++) {
-    *current = *(current + 1);
-}
+    if ((global_options & 0x2) && (global_options & 0x4)) return -1; // Both -c and -d are print together
+    if (!(global_options & 0x6)) return -1; // neither input -c nor -d
+    if (!b_flag) {
+        global_options |= 0xFFFF0000;
+    }
 
-    (*nodes_sum)--; // Decrease total node count
+    return EXIT_SUCCESS;
 }
- make
-cc -Wall -Werror -Wno-unused-variable -Wno-unused-function -MMD -fcommon -std=gnu11 -I include -c -o build/huff.o src/huff.c
-src/huff.c: In function ‘emit_huffman_tree’:
-src/huff.c:75:27: error: passing argument 1 of ‘emit_huffman_tree_rec’ from incompatible pointer type [-Werror=incompatible-pointer-types]
-   75 |     emit_huffman_tree_rec(&nodes);
-      |                           ^~~~~~
-      |                           |
-      |                           NODE (*)[513] {aka struct node (*)[513]}
-src/huff.c:47:34: note: expected ‘NODE *’ {aka ‘struct node *’} but argument is of type ‘NODE (*)[513]’ {aka ‘struct node (*)[513]’}
-   47 | void emit_huffman_tree_rec(NODE *node) {
-      |                            ~~~~~~^~~~
-src/huff.c: In function ‘remove_node’:
-src/huff.c:132:26: error: initialization of ‘NODE **’ {aka ‘struct node **’} from incompatible pointer type ‘NODE *’ {aka ‘struct node *’} [-Werror=incompatible-pointer-types]
-  132 |    for (NODE **current = nodes + index; current < nodes + *nodes_sum - 1; current++) {
-      |                          ^~~~~
-src/huff.c:132:49: error: comparison of distinct pointer types lacks a cast [-Werror]
-  132 |    for (NODE **current = nodes + index; current < nodes + *nodes_sum - 1; current++) {
-      |                                                 ^
-cc1: all warnings being treated as errors
 
